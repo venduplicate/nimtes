@@ -2,18 +2,16 @@
 # uses this file as the main entry point of the application.
 
 import nimtespkg/record/[record,enums]
-import std/macros
+import std/json
 
 
 when isMainModule:
-   echo ""
-   dumpAstGen:
-      if hasFlag(flag, flags) == true:
-        result.add(flag)
-   # 87055
-   # var file = readPlugin("Morrowind.esm")
+   
+   let plugin = readPlugin("Morrowind.esm")
 
-   # echo file.activators.len
+   let file = open("Morrowind.json",fmWrite)
+
+   file.write(%*plugin)
 
   
 

@@ -404,7 +404,7 @@ type
     # 0x10000 = Unreflectable
     # 0x20000 = Linked To Caster
 
-proc hasFlag[T: enum](e: T, flags: uint32): bool = result = (uint32(e) and (
+proc hasFlag*[T: enum](e: T, flags: uint32): bool = result = (uint32(e) and (
         not flags)) == 0
 
 macro enumStmts(a: typed): untyped =
@@ -465,4 +465,12 @@ proc parseCellDataFlags*(x:uint32): seq[CellDataFlags] =
 proc parseClassAutoCalcFlags*(x:uint32): seq[ClassAutoCalcFlags] =
     result = @[]
     enumStmts(ClassAutoCalcFlags)
+
+proc toRecordFlags*(v:uint32): RecordFlags =
+     case v:
+          of 0x0020: result = Deleted
+          of 0x0400: result = Persistent
+          of 0x0800: result = InitiallyDisabled
+          of 0x2000: result = Blocked
+          else: result = None
 

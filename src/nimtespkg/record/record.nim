@@ -3,7 +3,12 @@ import enums, util, constants
 from std/unicode import split
 
 type
-    RGB* = tuple[r,g,b,x: uint8]
+    RGB* = object
+        r,g,b,x: uint8
+    Grid2D[T: int8|int16|int32|int64] = object
+        x,y:T
+    Grid3D[T: int8|int16|int32|int64] = object 
+        x,y,z:T
     AlchemyData = object
         weight*: float32
         value*: uint32
@@ -51,6 +56,9 @@ type
         rotX*: float32
         rotY*: float32
         rotZ*: float32
+    CellTravel = object
+        destination*: Coords3D
+        previous_cell*: Option[string] = none(string)
     FormRef = object
         frmr*: uint32
         name*: string
@@ -64,7 +72,7 @@ type
         xchg*: Option[float32] = none(float32)
         intv*: Option[float32] = none(float32)
         nam9*: Option[uint32] = none(uint32)
-        cellTravel*: seq[tuple[dodt: Coords3D, dnam: Option[string]]] = @[]
+        cellTravel*: seq[CellTravel] = @[]
         fltv*: Option[float32] = none(float32)
         knam*: Option[string] = none(string)
         tnam*: Option[string] = none(string)
@@ -73,7 +81,7 @@ type
     MovedRef = object
         mvrf*: uint32
         cnam*: Option[string] = none(string)
-        cndt*: Option[tuple[x, y: int32]] = none(tuple[x, y: int32])
+        cndt*: Option[Grid2D[int32]] = none(Grid2D[int32])
         frmr*: Option[FormRef] = none(FormRef)
     CellData = object
         flags*: seq[CellDataFlags]
@@ -84,8 +92,11 @@ type
         sunlightColor*: RGB
         fogColor*: RGB
         fogDensity*: float32
+    AttributeDuo = object 
+        one*: uint32
+        two*: uint32
     ClassData = object
-        attribute*: tuple[one, two: uint32]
+        attribute*: AttributeDuo
         specialization*: uint32
         minorSkills*: seq[uint32] = @[]
         majorSkills*: seq[uint32] = @[]
@@ -96,7 +107,9 @@ type
         weight*: float32
         value*: uint16
         enchantment_points*: uint16
-    CarriedItem = tuple[count: uint32,name: string]
+    CarriedItem = object
+        count*: uint32
+        name*: string
     CreatureData = object
         kind*: CreatureKind
         level*: uint32
@@ -155,12 +168,12 @@ type
         charge*: uint32
         flags*: EnchantmentKind
     RankData = object
-        attributes*: tuple[one, two: uint32]
+        attributes*: AttributeDuo
         primarySkill*: uint32
         favoredSkill*: uint32
         factionReaction*: uint32
     FactionData = object
-        attributes*: tuple[one, two: uint32]
+        attributes*: AttributeDuo
         rankData*: array[0..9,RankData]
         skills*: array[0..6, int32]
         flags*: uint32
@@ -231,7 +244,7 @@ type
         flags*: seq[PathGridFlags]
         point_count*: uint16
     PathPoint = object
-        location: tuple[x,y,z:int32]
+        location: Grid3D[int32]
         flags*: uint8
         connectionCount*: uint8
     ProbeData = object
@@ -239,11 +252,17 @@ type
         value*: uint32
         quality*: float32
         uses*: uint32
+    Gender = object
+        male*: uint32
+        female*: uint32
+    SkillBonus = object 
+        id*: int32
+        bonus*: int32
     RaceData = object
-        skillbonuses*: array[0..6, tuple[id: int32, bonus: int32]]
-        attributes*: array[0..7, tuple[male: uint32, female: uint32]]
-        height*: tuple[male: uint32, female: uint32]
-        weight*: tuple[male: uint32, female: uint32]
+        skillbonuses*: array[0..6, SkillBonus]
+        attributes*: array[0..7, Gender]
+        height*: Gender
+        weight*: Gender
         flags*: seq[RaceFlags]
     RepairData = object
         weight*: float32
@@ -271,8 +290,12 @@ type
         author*: string
         fileDesc*: string
         numRecords*: uint32
-    MasterFile = tuple[mast: string, data: uint64]
-    MinMax = tuple[min, max: uint8]
+    MasterFile = object
+         mast*: string
+         data*: uint64
+    MinMax = object
+        min*: uint8
+        max*: uint8
     WeaponData = object
         weight*: float32
         value*: uint32
@@ -285,9 +308,7 @@ type
         slash*: MinMax
         thrust*: MinMax
         flags*: seq[WeaponKind]
-    Grid2D = tuple[x,y:int32]
-    Grid3D[T: int8|int16|int32|int64] = tuple[x,y,z:T]
-    CellTravel = tuple[destination:Coords3D,previous_cell:Option[string] = none(string)]
+    #CellTravel = tuple[destination:Coords3D,previous_cell:Option[string] = none(string)]
     TES3Record = object of RootObj
         kind*: TES3Kind
         size*: uint32
@@ -397,7 +418,7 @@ type
     TextureIndices = array[0..15,array[0..15,uint16]]
     LeveledTuple = tuple[name:string,pc_level:uint16]
     LandscapeRecord = ref object of TES3Record
-        coordinates*: Grid2D
+        coordinates*: Grid2D[int32]
         data*: uint32
         vertex_normals*: Option[VertexNormals] = none(VertexNormals)
         height_data*: Option[HeightData] = none(HeightData)
@@ -559,6 +580,16 @@ proc checkSize*(a, b: int) = assert(a == b,fmt"Size of {a} does not match Size o
 
 proc skip(s;pos:Natural) = s.setPosition(s.getPosition() + pos)
 
+proc `%`*(r:RGB):JsonNode =
+    result = newJObject()
+    result["r"] = %r.r
+    result["g"] = %r.g
+    result["b"] = %r.b
+
+proc `%`*(r:Grid2D):JsonNode =
+    result = newJObject()
+    result["x"] = %r.x
+    result["y"] = %r.y
 
 proc readTag(s): string = s.readStr(TAGSIZE)
 proc peekTag(s): string = s.peekStr(TAGSIZE)
@@ -691,6 +722,7 @@ proc writeActivator*(s;r:ActivatorRecord) = writepreamble(ACTI)
 proc `%`*(r:ActivatorRecord): JsonNode =
     result = newJObject()
     tojsonpreamble()
+
 
 
 proc readAlchemy*(s): PotionRecord =
@@ -958,7 +990,7 @@ proc readFormRef(s): FormRef =
                 let subtag = s.peekTag()
                 if subtag == DNAM:
                     dnamdata = s.readStrField(DNAM).some
-                result.cellTravel.add((data, dnamdata))
+                result.cellTravel.add(CellTravel(destination: data, previous_cell: dnamdata))
             of FLTV:
                 result.fltv = s.readFloat32Field(FLTV).some
             of KNAM:
@@ -985,7 +1017,7 @@ proc readMovedRef*(s): MovedRef =
             of CNAM:
                 result.cnam = s.readStrField(CNAM).some
             of CNDT:
-                var grid:tuple[x,y:int32]
+                var grid:Grid2D[int32]
                 s.readDataField(grid,CNDT)
                 result.cndt = grid.some
             of FRMR:
@@ -1058,7 +1090,7 @@ proc readClass*(s): ClassRecord =
                 result.data = ClassData()
                 checkTag(s.readStr(TAGSIZE),CLDT)
                 s.skip(4)
-                result.data.attribute = (s.readUint32(),s.readUint32())
+                result.data.attribute = AttributeDuo(one: s.readUint32(),two: s.readUint32())
                 result.data.specialization = s.readUint32()
                 for idx in 1..5:
                     result.data.minorSkills.add(s.readUint32())
@@ -1183,7 +1215,7 @@ proc readCreature*(s): CreatureRecord =
                 if subtag == DNAM:
                     checkTag(s.readStr(TAGSIZE), DNAM)
                     dnamdata = s.readStrField(DNAM).some
-                result.cell_travel_data.add((data, dnamdata))
+                result.cell_travel_data.add(CellTravel(destination: data,previous_cell: dnamdata))
             of AIA:
                 checkTag(s.readTag(),AIA)
                 discard s.readUint32() #size
@@ -1480,13 +1512,13 @@ proc readLand(s):LandscapeRecord =
         echo tag
         case tag:
             of INTV:
-                var grid:Grid2D
+                var grid:Grid2D[int32]
                 s.readDataField(grid,INTV)
                 result.coordinates = grid
             of DATA:
                 result.data = s.readUint32Field(DATA)
             of VNML:
-                var nrmls:array[0..64, array[0..64, tuple[x, y, z: int8]]]
+                var nrmls:array[0..64, array[0..64, Grid3D[int8]]]
                 s.readDataField(nrmls,VNML)
                 result.vertex_normals = nrmls.some
             of VHGT:
@@ -1745,7 +1777,7 @@ proc readNPC(s):NPCRecord =
                 let size = s.readUint32()
                 let count = s.readUint32()
                 let name = s.readStr(size.int - SZ32)
-                result.carried_objects.add((count,name))
+                result.carried_objects.add(CarriedItem(count: count,name: name))
             of NPCS:
                 result.spells.add(s.readStrField(NPCS))
             of AIDT:
@@ -1775,7 +1807,7 @@ proc readNPC(s):NPCRecord =
                 let subtag = s.peekTag()
                 if subtag == DNAM:
                     dnamdata = s.readStrField(DNAM).some
-                result.cell_travel_data.add((data, dnamdata))
+                result.cell_travel_data.add(CellTravel(destination: data, previous_cell: dnamdata))
             of AIA:
                 checkTag(s.readTag(),AIA)
                 discard s.readUint32() #size
@@ -1850,7 +1882,7 @@ proc readPathGrid(s): PathGridRecord =
                 let size = result.data.point_count
                 var data = PathPoint()
                 for x in 0..<int(size):
-                    data.location = (s.readInt32(),s.readInt32(),s.readInt32())
+                    data.location = Grid3D[int32](x: s.readInt32(),y: s.readInt32(),z: s.readInt32())
                     data.flags = s.readUint8()
                     data.connectionCount = s.readUint8()
                     s.skip(SZ16)
@@ -2151,7 +2183,7 @@ proc readMaster(s:Stream): MasterFile =
     checkTag(s.readTag(),DATA)
     s.skip(SZ32)
     let data = s.readUint64()
-    return (mast,data)
+    return MasterFile(mast: mast,data: data)
     
 
 proc readHeader*(s:Stream): TES3HeaderRecord =
