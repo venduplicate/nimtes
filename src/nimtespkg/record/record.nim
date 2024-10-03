@@ -167,10 +167,10 @@ type
                 aiwtimeofday*: uint8
                 aiwidles*: array[0..7, uint8]
     EnchantmentData = object
-        kind*: uint32
+        kind*: EnchantmentKind
         cost*: uint32
         charge*: uint32
-        flags*: EnchantmentKind
+        flags*: uint32
     RankData = object
         attributes*: AttributeDuo
         primarySkill*: uint32
@@ -311,7 +311,7 @@ type
         chop*: MinMax
         slash*: MinMax
         thrust*: MinMax
-        flags*: seq[WeaponKind]
+        flags*: uint32
     #CellTravel = tuple[destination:Coords3D,previous_cell:Option[string] = none(string)]
     TES3Record = object of RootObj
         kind*: TES3Kind
@@ -552,46 +552,46 @@ type
         activators*: seq[ActivatorRecord] = @[]
         potions*: seq[PotionRecord] = @[]
         alchemy_apparatus*: seq[AlchemyApparatusRecord] = @[]
-        armor: seq[ArmorRecord] = @[]
-        body_parts: seq[BodyRecord] = @[]
-        books: seq[BookRecord] = @[]
-        birthsigns: seq[BirthSignRecord] = @[]
-        cells: seq[CellRecord] = @[]
-        classes: seq[ClassRecord] = @[]
-        clothing: seq[ClothingRecord] = @[]
-        containers: seq[ContainerRecord] = @[]
-        creatures: seq[CreatureRecord] = @[]
-        dialogue: seq[DialogueRecord] = @[]
-        doors: seq[DoorRecord] = @[]
-        enchantments: seq[EnchantmentRecord] = @[]
-        factions: seq[FactionRecord] = @[]
-        globals: seq[GlobalRecord] = @[]
-        game_settings: seq[GameSettingRecord] = @[]
-        dialogue_topics: seq[DialogueInfoRecord] = @[]
-        ingredients: seq[IngredientRecord] = @[]
-        landscapes: seq[LandscapeRecord] = @[]
-        leveled_creatures: seq[LeveledCreatureRecord] = @[]
-        leveled_items: seq[LeveledItemRecord] = @[]
-        lights: seq[LightRecord] = @[]
-        locks: seq[LockRecord] = @[]
-        land_textures: seq[LandscapeTextureRecord] = @[]
-        magic_effects: seq[MagicEffectRecord] = @[]
-        miscellaneous: seq[MiscRecord] = @[]
-        npcs: seq[NPCRecord] = @[]
-        pathgrids: seq[PathGridRecord] = @[]
-        probes: seq[ProbeRecord] = @[]
-        races: seq[RaceRecord] = @[]
-        regions: seq[RegionRecord] = @[]
-        repair_items: seq[RepairToolRecord] = @[]
-        scripts: seq[ScriptRecord] = @[]
-        skills: seq[SkillRecord] = @[]
-        sound_generators: seq[SoundGeneratorRecord] = @[]
-        sounds: seq[SoundRecord] = @[]
-        spells: seq[SpellRecord] = @[]
-        start_scripts: seq[StartScriptRecord] = @[]
-        statics: seq[StaticRecord] = @[]
-        header: TES3HeaderRecord
-        weapons: seq[WeaponRecord] = @[]
+        armor*: seq[ArmorRecord] = @[]
+        body_parts*: seq[BodyRecord] = @[]
+        books*: seq[BookRecord] = @[]
+        birthsigns*: seq[BirthSignRecord] = @[]
+        cells*: seq[CellRecord] = @[]
+        classes*: seq[ClassRecord] = @[]
+        clothing*: seq[ClothingRecord] = @[]
+        containers*: seq[ContainerRecord] = @[]
+        creatures*: seq[CreatureRecord] = @[]
+        dialogue*: seq[DialogueRecord] = @[]
+        doors*: seq[DoorRecord] = @[]
+        enchantments*: seq[EnchantmentRecord] = @[]
+        factions*: seq[FactionRecord] = @[]
+        globals*: seq[GlobalRecord] = @[]
+        game_settings*: seq[GameSettingRecord] = @[]
+        dialogue_topics*: seq[DialogueInfoRecord] = @[]
+        ingredients*: seq[IngredientRecord] = @[]
+        landscapes*: seq[LandscapeRecord] = @[]
+        leveled_creatures*: seq[LeveledCreatureRecord] = @[]
+        leveled_items*: seq[LeveledItemRecord] = @[]
+        lights*: seq[LightRecord] = @[]
+        locks*: seq[LockRecord] = @[]
+        land_textures*: seq[LandscapeTextureRecord] = @[]
+        magic_effects*: seq[MagicEffectRecord] = @[]
+        miscellaneous*: seq[MiscRecord] = @[]
+        npcs*: seq[NPCRecord] = @[]
+        pathgrids*: seq[PathGridRecord] = @[]
+        probes*: seq[ProbeRecord] = @[]
+        races*: seq[RaceRecord] = @[]
+        regions*: seq[RegionRecord] = @[]
+        repair_items*: seq[RepairToolRecord] = @[]
+        scripts*: seq[ScriptRecord] = @[]
+        skills*: seq[SkillRecord] = @[]
+        sound_generators*: seq[SoundGeneratorRecord] = @[]
+        sounds*: seq[SoundRecord] = @[]
+        spells*: seq[SpellRecord] = @[]
+        start_scripts*: seq[StartScriptRecord] = @[]
+        statics*: seq[StaticRecord] = @[]
+        header*: TES3HeaderRecord
+        weapons*: seq[WeaponRecord] = @[]
 
 
 using
@@ -628,6 +628,8 @@ template preamble(tag:string):untyped =
     
 
 #### Read TES File
+
+proc readStrStripped(s:Stream,len:int):string = result = stripEverything(s.readStr(len))
 
 proc readStrField(s: Stream, tag: string): string =
     checkTag(s.readStr(TAGSIZE), tag)
@@ -864,7 +866,7 @@ proc writeApparatus*(s;r:AlchemyApparatusRecord) =
         s.writeField(AADT,r.data.get())
 
 proc readBipedObject(s;tag:string): BipedObject =
-    checkTag(s.readStr(TAGSIZE), tag)
+    checkTag(s.readTag(), tag)
     result = BipedObject()
     let size = s.readUint32()
     if size == SZ8:
@@ -1119,7 +1121,7 @@ proc readClass*(s): ClassRecord =
                 result.description = s.readStrField(DESC).some
             of CLDT:
                 result.data = ClassData()
-                checkTag(s.readStr(TAGSIZE),CLDT)
+                checkTag(s.readTag(),CLDT)
                 s.skip(4)
                 result.data.attribute = AttributeDuo(one: s.readUint32(),two: s.readUint32())
                 result.data.specialization = s.readUint32()
@@ -1184,7 +1186,7 @@ proc readContainer*(s): ContainerRecord =
                 checkTag(s.readTag(),NPCO)
                 let size = s.readUint32() #size
                 let count = s.readInt32()
-                let name = s.readStr(size.int - SZ32)
+                let name = s.readStrStripped(size.int - SZ32)
                 result.container_objects.add(ContainerItem(count:count,name:name))
             of SCRI:
                 result.script_name = s.readStrField(SCRI).some
@@ -1218,10 +1220,10 @@ proc readCreature*(s): CreatureRecord =
             of XSCL:
                 result.scale = s.readFloat32Field(XSCL)
             of NPCO:
-                checkTag(s.readStr(TAGSIZE),NPCO)
+                checkTag(s.readTag(),NPCO)
                 let size = s.readUint32() #size
                 let count = s.readUint32()
-                let name = s.readStr(size.int - SZ32)
+                let name = s.readStrStripped(size.int - SZ32)
                 result.carried_objects.add(HeldItem(count:count,name:name))
             of NPCS:
                 result.spells.add(s.readStrField(NPCS))
@@ -1244,24 +1246,24 @@ proc readCreature*(s): CreatureRecord =
                 s.readDataField(data, DODT)
                 let subtag = s.peekTag()
                 if subtag == DNAM:
-                    checkTag(s.readStr(TAGSIZE), DNAM)
+                    checkTag(s.readTag(), DNAM)
                     dnamdata = s.readStrField(DNAM).some
                 result.cell_travel_data.add(CellTravel(destination: data,previous_cell: dnamdata))
             of AIA:
                 checkTag(s.readTag(),AIA)
                 discard s.readUint32() #size
                 var pkg = AIPackage(kind: AIActivate)
-                pkg.aianame = s.readStr(32)
+                pkg.aianame = s.readStrStripped(32)
                 s.skip(1)
             of AIE:
-                checkTag(s.readStr(TAGSIZE),AIE)
+                checkTag(s.readTAG(),AIE)
                 discard s.readUint32() #size
                 var pkg = AIPackage(kind: AIEscort)
                 pkg.aiex = s.readFloat32()
                 pkg.aiey = s.readFloat32()
                 pkg.aiez = s.readFloat32()
                 pkg.aieduration = s.readUint16()
-                pkg.aieid = s.readStr(32)
+                pkg.aieid = s.readStrStripped(32)
                 s.skip(2)
                 tag = s.peekTag()
                 if tag == CNDT:
@@ -1275,7 +1277,7 @@ proc readCreature*(s): CreatureRecord =
                 pkg.aify = s.readFloat32()
                 pkg.aifz = s.readFloat32()
                 pkg.aifduration = s.readUint16()
-                pkg.aifid = s.readStr(32)
+                pkg.aifid = s.readStrStripped(32)
                 s.skip(2)
                 tag = s.peekTag()
                 if tag == CNDT:
@@ -1352,8 +1354,13 @@ proc readEnchantment(s): EnchantmentRecord =
             of NAME:
                 result.id = s.readStrField(NAME)
             of ENDT:
-                var data: EnchantmentData
-                s.readDataField(data,ENDT)
+                var data = EnchantmentData()
+                checkTag(s.readTag(),ENDT)
+                s.skip(4)
+                data.kind = EnchantmentKind(s.readUint32())
+                data.cost = s.readUint32()
+                data.charge = s.readUint32()
+                data.flags = s.readUint32()
                 result.data = data
             of ENAM:
                 var data: Enchantment
@@ -1382,7 +1389,7 @@ proc readFaction(s):FactionRecord =
                 result.data = data
             of ANAM:
                 let name = s.readStrField(ANAM)
-                checkTag(s.readStr(TAGSIZE),INTV)
+                checkTag(s.readTag(),INTV)
                 discard s.readUint32() #size
                 let intv = s.readInt32()
                 result.reactions.add(FactionReaction(faction_name:name,reaction:intv))
@@ -1442,7 +1449,7 @@ proc readInfo(s): DialogueInfoRecord =
     var tag:string
     while true:
         tag = s.peekTag()
-        
+        echo tag
         case tag:
             of INAM:
                 result.info_name = s.readStrField(INAM)
@@ -1451,8 +1458,8 @@ proc readInfo(s): DialogueInfoRecord =
             of NNAM:
                 result.next_info_id = s.readStrField(NNAM)
             of DATA:
-                checkTag(s.readStr(TAGSIZE),DATA)
-                discard s.readUint32()
+                checkTag(s.readTag(),DATA)
+                s.skip(4)
                 var data = InfoData()
                 data.kind = s.readUint8()
                 s.skip(3)
@@ -1479,22 +1486,19 @@ proc readInfo(s): DialogueInfoRecord =
             of NAME:
                 result.response_text = s.readStrField(NAME).some
             of SCVR:
-                checkTag(s.readStr(TAGSIZE),SCVR)
-                discard s.readUint32()
+                checkTag(s.readTag(),SCVR)
+                let size = s.readUint32()
                 var filter = FilterData()
-                filter.kind = FilterFunctionKind(s.readChar())
                 filter.index = s.readChar()
+                filter.kind = parseFilterFunctionKind(s.readChar())
                 filter.details = s.readStr(2)
                 filter.op = s.readChar()
-                let size = s.readUint32()
-                filter.name = s.readStr(size.int)
+                filter.name = s.readStrStripped(size.int - 5)
 
-                tag = s.peekStr(TAGSIZE)
+                tag = s.peekTag()
                 if tag == INTV:
-                    checkTag(s.readStr(TAGSIZE),INTV)
-                    filter.comparison_int = s.readUint32().some
-                tag = s.peekStr(TAGSIZE)
-                if tag == FLTV:
+                    filter.comparison_int = s.readUint32Field(INTV).some
+                elif tag == FLTV:
                     filter.comparison_float = s.readFloat32Field(FLTV).some
                 
                 result.dialogue_filters.add(filter)
@@ -1540,7 +1544,6 @@ proc readLand(s):LandscapeRecord =
     var tag:string
     while true:
         tag = s.peekTag()
-        echo tag
         case tag:
             of INTV:
                 var grid:Grid2D[int32]
@@ -1681,7 +1684,6 @@ proc readLandTexture(s):LandscapeTextureRecord =
     var tag:string
     while true:
         tag = s.peekTag()
-        echo tag
         case tag:
             of NAME:
                 result.id = s.readStrField(NAME)
@@ -1698,7 +1700,6 @@ proc readMagicEffect(s):MagicEffectRecord =
     var tag:string
     while true:
         tag = s.peekTag()
-        echo tag
         case tag:
             of INDX:
                 result.index = s.readUint32Field(INDX)
@@ -1825,7 +1826,7 @@ proc readNPC(s):NPCRecord =
                 checkTag(s.readTag(),NPCO)
                 let size = s.readUint32()
                 let count = s.readUint32()
-                let name = s.readStr(size.int - SZ32)
+                let name = s.readStrStripped(size.int - SZ32)
                 result.carried_objects.add(HeldItem(count: count,name: name))
             of NPCS:
                 result.spells.add(s.readStrField(NPCS))
@@ -1834,20 +1835,12 @@ proc readNPC(s):NPCRecord =
                 s.skip(SZ32)
                 var data = AIData()
                 data.hello = s.readUint8()
-                echo data.hello
                 data.unknown = s.readUint8()
                 data.fight = s.readUint8()
-                echo data.fight
                 data.flee = s.readUint8()
-                echo data.flee
                 data.alarm = s.readUint8()
-                echo data.alarm
                 s.skip(3) # junk data
-                var flags = s.readUint32()
-                if result.id == "galbedir":
-                    echo flags
-                    assert(true == false,"breaking")
-                data.flags = parseAIFlags(flags)
+                data.flags = parseAIFlags(s.readUint32())
                 result.ai_data = data
             of DODT:
                 var data: Coords3D
@@ -1861,17 +1854,17 @@ proc readNPC(s):NPCRecord =
                 checkTag(s.readTag(),AIA)
                 discard s.readUint32() #size
                 var pkg = AIPackage(kind: AIActivate)
-                pkg.aianame = s.readStr(32)
+                pkg.aianame = s.readStrStripped(32)
                 s.skip(1)
             of AIE:
-                checkTag(s.readStr(TAGSIZE),AIE)
+                checkTag(s.readTag(),AIE)
                 discard s.readUint32() #size
                 var pkg = AIPackage(kind: AIEscort)
                 pkg.aiex = s.readFloat32()
                 pkg.aiey = s.readFloat32()
                 pkg.aiez = s.readFloat32()
                 pkg.aieduration = s.readUint16()
-                pkg.aieid = s.readStr(32)
+                pkg.aieid = s.readStrStripped(32)
                 s.skip(2)
                 tag = s.peekTag()
                 if tag == CNDT:
@@ -1885,7 +1878,7 @@ proc readNPC(s):NPCRecord =
                 pkg.aify = s.readFloat32()
                 pkg.aifz = s.readFloat32()
                 pkg.aifduration = s.readUint16()
-                pkg.aifid = s.readStr(32)
+                pkg.aifid = s.readStrStripped(32)
                 s.skip(2)
                 tag = s.peekTag()
                 if tag == CNDT:
@@ -1917,11 +1910,15 @@ proc readPathGrid(s): PathGridRecord =
 
     while true:
         tag = s.peekTag()
-        echo "pathgrid ",tag
         case tag:
             of DATA:
-                var data:PathGridData
-                s.readDataField(data,DATA)
+                var data = PathGridData()
+                checkTag(s.readTag(),DATA)
+                s.skip(4)
+                data.gridX = s.readInt32()
+                data.gridY = s.readInt32()
+                data.flags = parsePathGridFlags(s.readUint16())
+                data.point_count = s.readUint16()
                 result.data = data
             of NAME:
                 result.id = s.readStrField(NAME)
@@ -1947,7 +1944,6 @@ proc readPathGrid(s): PathGridRecord =
                 let size = s.readUint32()
                 s.skip(int(size))
             else: 
-                echo tag
                 break
 
 proc readProbe(s): ProbeRecord =
@@ -2042,7 +2038,7 @@ proc readRegion(s): RegionRecord =
             of SNAM:
                 checkTag(s.readTag(),SNAM)
                 s.skip(4)
-                let name = s.readStr(32)
+                let name = s.readStrStripped(32)
                 let chance = s.readUint8()
                 result.sound_chances.add(SoundChance(name: name,chance: chance))
             else: break
@@ -2079,13 +2075,12 @@ proc readScript(s): ScriptRecord =
     var tag:string
     while true:
         tag = s.peekTag()
-        echo tag
         case tag:
             of SCHD:
                 checkTag(s.readTag(),SCHD)
                 s.skip(4)
                 var data = ScriptHeader()
-                data.name = s.readStr(32)
+                data.name = s.readStrStripped(32)
                 data.num_shorts = s.readUint32()
                 data.num_longs = s.readUint32()
                 data.num_floats = s.readUint32()
@@ -2194,8 +2189,12 @@ proc readSpell(s): SpellRecord =
             of FNAM:
                 result.full_name = s.readStrField(FNAM).some
             of SPDT:
-                var data: SpellData
-                s.readDataField(data,SPDT)
+                var data = SpellData()
+                checkTag(s.readTag(),SPDT)
+                s.skip(4)
+                data.kind = SpellKind(s.readUint32())
+                data.spellCost = s.readUint32()
+                data.flags = parseSpellFlags(s.readUint32())
                 result.data = data
             of ENAM:
                 var data: Enchantment
@@ -2256,8 +2255,8 @@ proc readHeader*(s:Stream): TES3HeaderRecord =
                 s.skip(SZ32)
                 result.header.version = s.readFloat32()
                 result.header.flags = s.readUint32()
-                result.header.author = stripEverything(s.readStr(int(AUTHOR_SIZE)))
-                result.header.fileDesc = stripEverything(s.readStr(int(DESC_SIZE)))
+                result.header.author = s.readStrStripped(int(AUTHOR_SIZE))
+                result.header.fileDesc = s.readStrStripped(int(DESC_SIZE))
                 result.header.numRecords = s.readUint32()
             of MAST:
                 result.masters.add(s.readMaster())

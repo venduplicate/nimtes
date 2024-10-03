@@ -12,6 +12,11 @@ when isMainModule:
    let file = open("Morrowind.json",fmWrite)
 
    file.write(%*plugin)
+   #file.write(%*plugin.dialogue)
+   #file.write(%*plugin.doors)
+   #file.write(%*plugin.enchantments)
+   #file.write(%*plugin.factions)
+   #file.write(%*plugin.globals)
 
   
 
