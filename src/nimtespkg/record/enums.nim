@@ -431,6 +431,14 @@ macro enumStmts(a: typed): untyped =
             newLit(ai.strVal)
         ))))
 
+proc parseBodyFlags*(x:uint8): seq[BodyFlags] =
+    result = @[]
+    enumStmts(BodyFlags)
+
+proc parseRaceFlags*(x:uint32): seq[RaceFlags] =
+    result = @[]
+    enumStmts(RaceFlags)
+
 proc parseMagicEffectFlags*(x: uint32): seq[MagicEffectFlags] =
     result = @[]
     enumStmts(MagicEffectFlags)

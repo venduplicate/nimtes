@@ -3,8 +3,15 @@ import enums, util, constants
 from std/unicode import split
 
 type
+    RGBA* = object
+        r*: uint8
+        g*: uint8
+        b*: uint8
+        a*: uint8
     RGB* = object
-        r,g,b,x: uint8
+        r*:uint8
+        g*:uint8
+        b*:uint8
     Grid2D[T: int8|int16|int32|int64] = object
         x,y:T
     Grid3D[T: int8|int16|int32|int64] = object 
@@ -88,9 +95,9 @@ type
         gridX*: int32
         gridY*: int32
     AmbientLight = object
-        ambientColor*: RGB
-        sunlightColor*: RGB
-        fogColor*: RGB
+        ambientColor*: RGBA
+        sunlightColor*: RGBA
+        fogColor*: RGBA
         fogDensity*: float32
     AttributeDuo = object 
         one*: uint32
@@ -107,9 +114,6 @@ type
         weight*: float32
         value*: uint16
         enchantment_points*: uint16
-    CarriedItem = object
-        count*: uint32
-        name*: string
     CreatureData = object
         kind*: CreatureKind
         level*: uint32
@@ -205,7 +209,7 @@ type
         value*: uint32
         time*: int32
         radius*: uint32
-        color*: RGB
+        color*: RGBA
         flags*: seq[LightFlags]
     LockData = object
         weight*: float32
@@ -260,7 +264,7 @@ type
         bonus*: int32
     RaceData = object
         skillbonuses*: array[0..6, SkillBonus]
-        attributes*: array[0..7, Gender]
+        attributes*: array[0..7, AttributeDuo]
         height*: Gender
         weight*: Gender
         flags*: seq[RaceFlags]
@@ -345,7 +349,7 @@ type
     CellRecord = ref object of TES3Record
         data*: CellData
         region_name*: Option[string] = none(string)
-        map_color*: Option[RGB] = none(RGB)
+        map_color*: Option[RGBA] = none(RGBA)
         water_height*: Option[float32] = none(float32)
         ambient_light*: Option[AmbientLight] = none(AmbientLight)
         moved_references*: seq[MovedRef] = @[]
@@ -360,16 +364,22 @@ type
         icon_name*: Option[string] = none(string)
         biped_objects*: seq[BipedObject] = @[]
         enchantment_name*: Option[string] = none(string)
+    ContainerItem = object
+        count*:int32
+        name*:string
     ContainerRecord = ref object of TES3Record
         weight*: float32
         container_flags*: seq[ContainerFlags]
-        container_objects*: seq[tuple[count:int32,name:string]] = @[]
+        container_objects*: seq[ContainerItem] = @[]
+    HeldItem = object 
+        count*:uint32
+        name*:string
     CreatureRecord = ref object of TES3Record
         sound_gen_creature*: Option[string] = none(string)
         data*: CreatureData
         creature_flags*: seq[CreatureFlags]
         scale*: float32 = 1.0
-        carried_objects*: seq[tuple[count:uint32,name:string]] = @[]
+        carried_objects*: seq[HeldItem] = @[]
         ai_data*: AIData
         cell_travel_data*: seq[CellTravel] = @[]
         spells*: seq[string] = @[]
@@ -381,10 +391,13 @@ type
     EnchantmentRecord = ref object of TES3Record
         data*: EnchantmentData
         enchantments*: seq[Enchantment] = @[]
+    FactionReaction = object 
+        faction_name*:string
+        reaction*: int32
     FactionRecord = ref object of TES3Record
         rank_names*: seq[string] = @[]
         data*: FactionData
-        reactions*: seq[tuple[faction_name:string,reaction:int32]] = @[]
+        reactions*: seq[FactionReaction] = @[]
     GlobalRecord = ref object of TES3Record
         global_type*: char
         value*: float32
@@ -414,9 +427,11 @@ type
         data*: IngredientData
         icon_name*: Option[string] = none(string)
     VertexNormals = array[0..64,array[0..64,Grid3D[int8]]]
-    VertexColors = array[0..64,array[0..64,tuple[r,g,b: uint8]]]
+    VertexColors = array[0..64,array[0..64,RGB]]
     TextureIndices = array[0..15,array[0..15,uint16]]
-    LeveledTuple = tuple[name:string,pc_level:uint16]
+    LeveledListItem = object 
+        name*:string
+        pc_level*:uint16
     LandscapeRecord = ref object of TES3Record
         coordinates*: Grid2D[int32]
         data*: uint32
@@ -428,11 +443,11 @@ type
     LeveledCreatureRecord = ref object of TES3Record
         data*: uint32
         chance_none*: uint8
-        creatures*: seq[LeveledTuple] = @[]
+        creatures*: seq[LeveledListItem] = @[]
     LeveledItemRecord = ref object of TES3Record
         data*: uint32
         chance_none*: uint8
-        items*: seq[LeveledTuple] = @[]
+        items*: seq[LeveledListItem] = @[]
     LightRecord = ref object of TES3Record
         icon_name*: Option[string] = none(string)
         data*: LightData
@@ -468,7 +483,7 @@ type
         hair_model*: Option[string] = none(string)
         data*: NPCData
         npc_flags*: seq[NPCFlags]
-        carried_objects*: seq[CarriedItem] = @[]
+        carried_objects*: seq[HeldItem] = @[]
         spells*: seq[string]
         ai_data*: AIData
         cell_travel_data*: seq[CellTravel] = @[]
@@ -484,17 +499,24 @@ type
         data*: RaceData
         powers*: seq[string] = @[]
         description*: Option[string] = none(string)
-    WeatherChances = tuple[clear,cloudy,foggy,overcast,rain,thunder,ash,blight:uint8,snow,blizzard:Option[uint8]]
-    SoundChance = tuple[name:string,chance:uint8]
+    WeatherChances = object
+        clear,cloudy,foggy,overcast,rain,thunder,ash,blight*:uint8
+        snow,blizzard*:Option[uint8]
+    SoundChance = object 
+        name*:string
+        chance*:uint8
     RegionRecord = ref object of TES3Record
         weather_chances*: WeatherChances
         sleep_creature*: Option[string] = none(string)
-        map_color*: RGB
+        map_color*: RGBA
         sound_chances*: seq[SoundChance] = @[]
     RepairToolRecord = ref object of TES3Record
         data*: RepairData
         icon_name*: Option[string] = none(string)
-    ScriptVariables = tuple[shorts:seq[string],longs:seq[string],floats:seq[string]]
+    ScriptVariables = object 
+        shorts*:seq[string]
+        longs*:seq[string]
+        floats*:seq[string]
     ScriptRecord = ref object of TES3Record
         script_header*: ScriptHeader
         script_variables*: Option[ScriptVariables] = none(ScriptVariables)
@@ -509,7 +531,8 @@ type
         data*: uint32
         creature_name*: Option[string] = none(string)
         sound_id*: Option[string] = none(string)
-    AttenuationData = tuple[volume,min,max:uint8]
+    AttenuationData = object
+        volume,min,max*:uint8
     SoundRecord = ref object of TES3Record
         data*: AttenuationData
     SpellRecord = ref object of TES3Record
@@ -580,7 +603,10 @@ proc checkSize*(a, b: int) = assert(a == b,fmt"Size of {a} does not match Size o
 
 proc skip(s;pos:Natural) = s.setPosition(s.getPosition() + pos)
 
-proc `%`*(r:RGB):JsonNode =
+proc `%`*(c:char):JsonNode =
+    result = newJString($c)
+
+proc `%`*(r:RGBA):JsonNode =
     result = newJObject()
     result["r"] = %r.r
     result["g"] = %r.g
@@ -918,8 +944,13 @@ proc readBody*(s): BodyRecord =
             of FNAM:
                 result.full_name = s.readStrField(FNAM).some
             of BYDT:
-                var data: BodyPartData
-                s.readDataField(data, BYDT)
+                var data = BodyPartData()
+                checkTag(s.readTag(),BYDT)
+                s.skip(4)
+                data.part = BodyPart(s.readUint8())
+                data.vampire = s.readUint8()
+                data.flags = parseBodyFlags(s.readUint8())
+                data.partKind = BodyPartKind(s.readUint8())
                 result.data = data
             else: break
 
@@ -1047,7 +1078,7 @@ proc readCell*(s): CellRecord =
             of RGNN:
                 result.region_name = s.readStrField(RGNN).some
             of NAM5:
-                var color: RGB
+                var color: RGBA
                 s.readDataField(color, NAM5)
                 result.map_color = color.some
             of WHGT:
@@ -1154,7 +1185,7 @@ proc readContainer*(s): ContainerRecord =
                 let size = s.readUint32() #size
                 let count = s.readInt32()
                 let name = s.readStr(size.int - SZ32)
-                result.container_objects.add((count,name))
+                result.container_objects.add(ContainerItem(count:count,name:name))
             of SCRI:
                 result.script_name = s.readStrField(SCRI).some
             else:
@@ -1191,7 +1222,7 @@ proc readCreature*(s): CreatureRecord =
                 let size = s.readUint32() #size
                 let count = s.readUint32()
                 let name = s.readStr(size.int - SZ32)
-                result.carried_objects.add((count,name))
+                result.carried_objects.add(HeldItem(count:count,name:name))
             of NPCS:
                 result.spells.add(s.readStrField(NPCS))
             of AIDT:
@@ -1354,7 +1385,7 @@ proc readFaction(s):FactionRecord =
                 checkTag(s.readStr(TAGSIZE),INTV)
                 discard s.readUint32() #size
                 let intv = s.readInt32()
-                result.reactions.add((name,intv))
+                result.reactions.add(FactionReaction(faction_name:name,reaction:intv))
             else: break
 
 proc readGlobal*(s): GlobalRecord =
@@ -1530,7 +1561,7 @@ proc readLand(s):LandscapeRecord =
                 s.readDataField(wmap,WNAM)
                 result.world_map_heights = wmap.some
             of VCLR:
-                var vcolors: array[0..64, array[0..64, tuple[r,g,b: uint8]]]
+                var vcolors: array[0..64, array[0..64, RGB]]
                 s.readDataField(vcolors,VCLR)
                 result.vertex_colors = vcolors.some
             of VTEX:
@@ -1558,7 +1589,7 @@ proc readLeveledCreature(s): LeveledCreatureRecord =
             of CNAM:
                 let name = s.readStrField(CNAM)
                 let level = s.readUint16Field(INTV)
-                result.creatures.add((name,level))
+                result.creatures.add(LeveledListItem(name: name,pc_level: level))
             else: break
 
 proc readLeveledItem(s): LeveledItemRecord =
@@ -1580,7 +1611,7 @@ proc readLeveledItem(s): LeveledItemRecord =
             of INAM:
                 let name = s.readStrField(INAM)
                 let level = s.readUint16Field(INTV)
-                result.items.add((name,level))
+                result.items.add(LeveledListItem(name: name,pc_level: level))
             else: break
 
 proc readLight(s):LightRecord =
@@ -1601,8 +1632,15 @@ proc readLight(s):LightRecord =
             of ITEX:
                 result.icon_name = s.readStrField(ITEX).some
             of LHDT:
-                var data:LightData
-                s.readDataField(data,LHDT)
+                var data = LightData()
+                checkTag(s.readTag(),LHDT)
+                s.skip(4)
+                data.weight = s.readFloat32()
+                data.value = s.readUint32()
+                data.time = s.readInt32()
+                data.radius = s.readUint32()
+                s.read(data.color)
+                data.flags = parseLightFlags(s.readUint32())
                 result.data = data
             of SNAM:
                 result.sound_name = s.readStrField(SNAM).some
@@ -1660,12 +1698,23 @@ proc readMagicEffect(s):MagicEffectRecord =
     var tag:string
     while true:
         tag = s.peekTag()
+        echo tag
         case tag:
             of INDX:
                 result.index = s.readUint32Field(INDX)
             of MEDT:
-                var data:MagicEffectData
-                s.readDataField(data,MEDT)
+                var data = MagicEffectData()
+                checkTag(s.readTag(),MEDT)
+                s.skip(4)
+                data.school = s.readUint32()
+                data.baseCost = s.readFloat32()
+                data.flags = parseMagicEffectFlags(s.readUint32())
+                data.red = s.readUint32()
+                data.green = s.readUint32()
+                data.blue = s.readUint32()
+                data.speedX = s.readFloat32()
+                data.sizeX = s.readFloat32()
+                data.sizeCap = s.readFloat32()
                 result.data = data
             of ITEX:
                 result.effect_icon = s.readStrField(ITEX).some
@@ -1777,7 +1826,7 @@ proc readNPC(s):NPCRecord =
                 let size = s.readUint32()
                 let count = s.readUint32()
                 let name = s.readStr(size.int - SZ32)
-                result.carried_objects.add(CarriedItem(count: count,name: name))
+                result.carried_objects.add(HeldItem(count: count,name: name))
             of NPCS:
                 result.spells.add(s.readStrField(NPCS))
             of AIDT:
@@ -1933,15 +1982,20 @@ proc readRace(s): RaceRecord =
     var tag:string
     while true:
         tag = s.peekTag()
-
         case tag:
             of NAME:
                 result.id = s.readStrField(NAME)
             of FNAM:
                 result.full_name = s.readStrField(FNAM).some
             of RADT:
-                var data: RaceData
-                s.readDataField(data,RADT)
+                var data = RaceData()
+                checkTag(s.readTag(),RADT)
+                s.skip(4)
+                s.read(data.skillbonuses)
+                s.read(data.attributes)
+                s.read(data.height)
+                s.read(data.weight)
+                data.flags = parseRaceFlags(s.readUint32())
                 result.data = data
             of NPCS:
                 result.powers.add(s.readStrField(NPCS))
@@ -1964,23 +2018,25 @@ proc readRegion(s): RegionRecord =
                 result.full_name = s.readStrField(FNAM).some
             of WEAT:
                 checkTag(s.readTag(),WEAT)
+                var chances = WeatherChances()
                 let size = s.readUint32()
-                let clear = s.readUint8()
-                let cloudy = s.readUint8()
-                let foggy = s.readUint8()
-                let overcast = s.readUint8()
-                let rain = s.readUint8()
-                let thunder = s.readUint8()
-                let ash = s.readUint8()
-                let blight = s.readUint8()
-                result.weather_chances = (clear,cloudy,foggy,overcast,rain,thunder,ash,blight,none(uint8),none(uint8))
+                chances.clear = s.readUint8()
+                chances.cloudy = s.readUint8()
+                chances.foggy = s.readUint8()
+                chances.overcast = s.readUint8()
+                chances.rain = s.readUint8()
+                chances.thunder = s.readUint8()
+                chances.ash = s.readUint8()
+                chances.blight = s.readUint8()
                 if size == 10:
-                    result.weather_chances.snow = s.readUint8().some
-                    result.weather_chances.blizzard = s.readUint8().some
+                    chances.snow = s.readUint8().some
+                    chances.blizzard = s.readUint8().some
+                result.weather_chances = WeatherChances()
+                
             of BNAM:
                 result.sleep_creature = s.readStrField(BNAM).some
             of CNAM:
-                var color: RGB
+                var color: RGBA
                 s.readDataField(color,CNAM)
                 result.map_color = color
             of SNAM:
@@ -1988,7 +2044,7 @@ proc readRegion(s): RegionRecord =
                 s.skip(4)
                 let name = s.readStr(32)
                 let chance = s.readUint8()
-                result.sound_chances.add((name,chance))
+                result.sound_chances.add(SoundChance(name: name,chance: chance))
             else: break
 
 proc readRepairTool(s): RepairToolRecord =
@@ -2053,7 +2109,7 @@ proc readScript(s): ScriptRecord =
                 for f in 0..num_floats:
                     floats.add(varlist[f+num_shorts+num_longs])
                 
-                result.script_variables = (shorts,longs,floats).some
+                result.script_variables = ScriptVariables(shorts: shorts,longs: longs,floats: floats).some
                     
             of SCDT:
                 checkTag(s.readTag(),SCDT)
